@@ -47,9 +47,10 @@ void laserCallback(const sensor_msgs::LaserScan& laser_scan) {
    closest_ping_dist = 4.0;
 	
    int current_angle = -1*lidar_requested_total_range/2;
-
+// implementing the algorthm
    for(int x = 0; x < lidar_requested_total_range; x++) {
-		if(closest_ping_dist > laser_scan.ranges[ping_index_ + current_angle]) {
+// get the current value of the requested index.
+		if(closest_ping_dist > laser_scan.ranges[ping_index_ + current_angle]) { 
 			closest_ping_dist = laser_scan.ranges[ping_index_ + current_angle];
 			closest_ping_index = current_angle;
 		}	

@@ -59,7 +59,7 @@ int main(int argc, char **argv) {
     while(ros::ok()) { // do forever
         twist_cmd.angular.z=0.0; // do not spin 
         twist_cmd.linear.x=speed; //command to move forward
-        while(!g_lidar_alarm) { // keep moving forward until get an alarm signal
+        while(!g_lidar_alarm && ros::ok()) { // keep moving forward until get an alarm signal
           twist_commander.publish(twist_cmd);
           timer+=sample_dt;
           ros::spinOnce();
@@ -70,7 +70,7 @@ int main(int argc, char **argv) {
         twist_cmd.linear.x=0.0; //stop moving forward
         twist_cmd.angular.z=yaw_rate; //and start spinning in place
         timer=0.0; //reset the timer
-        while(g_lidar_alarm) {
+        while(g_lidar_alarm && ros::ok()) {
 		
 		  if(remember_last == 0) {
 		  	remember_last = g_lidar_alarm_index;
