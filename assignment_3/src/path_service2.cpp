@@ -8,7 +8,7 @@
 // i.e., equivalent to expressing subgoals in odom frame
 
 #include <ros/ros.h>
-#include <example_ros_service/PathSrv.h>
+#include <assignment_3/PathSrv.h>
 #include <nav_msgs/Path.h>
 #include <geometry_msgs/Pose.h>
 #include <geometry_msgs/Twist.h>
@@ -45,11 +45,11 @@ double sgn(double x) { if (x>0.0) {return 1.0; }
 
 //a function to consider periodicity and find min delta angle
 double min_spin(double spin_angle) {
-        if (spin_angle>M_PI) {
-            spin_angle -= 2.0*M_PI;}
-        if (spin_angle< -M_PI) {
-            spin_angle += 2.0*M_PI;}
-         return spin_angle;   
+    if (spin_angle>M_PI) {
+	spin_angle -= 2.0*M_PI;}
+    if (spin_angle< -M_PI) {
+	spin_angle += 2.0*M_PI;}
+     return spin_angle;   
 }            
 
 // a useful conversion function: from quaternion to yaw
