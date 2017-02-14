@@ -16,8 +16,9 @@
 #include <string>
 #include <math.h>
 using namespace std;
+
 //some tunable constants, global
-const double g_move_speed = 1.0; // set forward speed to this value, e.g. 1m/s
+const double g_move_speed = 0.5; // set forward speed to this value, e.g. 1m/s
 const double g_spin_speed = 1.0; // set yaw rate to this value, e.g. 1 rad/s
 const double g_sample_dt = 0.01;
 const double g_dist_tol = 0.01; // 1cm
@@ -122,13 +123,13 @@ void g_and_dist(geometry_msgs::Pose current_pose, geometry_msgs::Pose goal_pose,
     //goal position -> gp
     //gp_x -> gp_x
 
-    std_msgs::Float64 cp_x = current_pose.position.x; 
-    std_msgs::Float64 cp_z = current_pose.position.z; 
+    double cp_x = current_pose.position.x; 
+    double cp_y = current_pose.position.y; 
 
-    std_msgs::Float64 gp_x = goal_pose.position.x;
-    std_msgs::Float64 gp_z = goal_pose.position.z;
+    double gp_x = goal_pose.position.x;
+    double gp_y = goal_pose.position.y;
     
-    dist = (gp_x - cp_x) * (gp_z - cp_z) / 2.0;
+    dist = (gp_x - cp_x) * (gp_y - cp_y) / 2.0;
 
  if (dist < g_dist_tol) { //too small of a motion, so just set the heading from goal heading
    heading = convertPlanarQuat2Phi(goal_pose.orientation); 
@@ -140,7 +141,7 @@ void g_and_dist(geometry_msgs::Pose current_pose, geometry_msgs::Pose goal_pose,
 }
 
 
-bool callback(example_ros_service::PathSrvRequest& request, example_ros_service::PathSrvResponse& response)
+bool callback(assignment_3::PathSrvRequest& request, assignment_3::PathSrvResponse& response)
 {
     ROS_INFO("callback activated");
     double yaw_desired, yaw_current, travel_distance, spin_angle;

@@ -7,7 +7,7 @@ catkin_simple()
 
 # Libraries: uncomment the following and edit arguments to create a new library
   
-cs_add_library(path_service_node src/path_service2.cpp)
+cs_add_executable(path_service_node src/path_service2.cpp)
 
 # Executables: uncomment the following and edit arguments to compile new nodes
 # may add more of these lines for more nodes from the same package
