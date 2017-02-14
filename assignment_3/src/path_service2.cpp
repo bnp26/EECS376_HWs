@@ -15,6 +15,9 @@
 #include <iostream>
 #include <string>
 #include <math.h>
+
+#define PI 3.141592653589
+
 using namespace std;
 
 //some tunable constants, global
@@ -46,10 +49,10 @@ double sgn(double x) { if (x>0.0) {return 1.0; }
 
 //a function to consider periodicity and find min delta angle
 double min_spin(double spin_angle) {
-    if (spin_angle>M_PI) {
-	spin_angle -= 2.0*M_PI;}
-    if (spin_angle< -M_PI) {
-	spin_angle += 2.0*M_PI;}
+    if (spin_angle>PI) {
+	spin_angle -= 2.0*PI;}
+    if (spin_angle< - PI) {
+	spin_angle += 2.0*PI;}
      return spin_angle;   
 }            
 
@@ -130,9 +133,13 @@ void g_and_dist(geometry_msgs::Pose current_pose, geometry_msgs::Pose goal_pose,
     double gp_y = goal_pose.position.y;
     
     dist = (gp_x - cp_x) * (gp_y - cp_y) / 2.0;
+    double dist_x = gp_x - cp_x;
+    double dist_y = gp_y - cp_y;
 
  if (dist < g_dist_tol) { //too small of a motion, so just set the heading from goal heading
-   heading = convertPlanarQuat2Phi(goal_pose.orientation); 
+   heading = convertPlanarQuat2Phi(current_pose.orientation); 
+   heading = atan2(dist_y, dist_x);
+   heading = heading * PI / 180; 
  }
  else {
     heading = 0.0; //FALSE!!

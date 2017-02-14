@@ -35,7 +35,7 @@ int main(int argc, char **argv) {
     //create some path points...this should be done by some intelligent algorithm, but we'll hard-code it here
     geometry_msgs::PoseStamped pose_stamped;
     geometry_msgs::Pose pose;
-    pose.position.x = 2.0; // say desired x-coord is 1
+    pose.position.x = 3.0; // say desired x-coord is 3
     pose.position.y = 0.0;
     pose.position.z = 0.0; // let's hope so!
     pose.orientation.x = 0.0; //always, for motion in horizontal plane
@@ -44,7 +44,7 @@ int main(int argc, char **argv) {
     pose.orientation.w = 1.0; //sum of squares of all components of unit quaternion is 1
     pose_stamped.pose = pose;
     path_srv.request.nav_path.poses.push_back(pose_stamped);
-    
+    ROS_INFO("Should have moved to coordinate (3, 0)"); 
     pose.position.x = 2;
     pose.position.y = 3;
     pose_stamped.pose = pose;
