@@ -50,12 +50,12 @@ int main(int argc, char **argv) {
     pose_stamped.pose = pose;
     path_srv.request.nav_path.poses.push_back(pose_stamped);
     // some more poses...
-    quat = convertPlanarPhi2Quaternion(1.57); // get a quaternion corresponding to this heading
-    pose_stamped.pose.orientation = quat;   
-    pose_stamped.pose.position.y=3.0; // say desired y-coord is 1.0
-    path_srv.request.nav_path.poses.push_back(pose_stamped);
+    // quat = convertPlanarPhi2Quaternion(1.57); // get a quaternion corresponding to this heading
+    // pose_stamped.pose.orientation = quat;   
+    // pose_stamped.pose.position.y=3.0; // say desired y-coord is 1.0
+    // path_srv.request.nav_path.poses.push_back(pose_stamped);
     
-    quat = convertPlanarPhi2Quaternion(3.14);
+    // quat = convertPlanarPhi2Quaternion(3.14);
     pose_stamped.pose.orientation = quat;  
     //desired position is not updated...just the desired heading  
     path_srv.request.nav_path.poses.push_back(pose_stamped);
