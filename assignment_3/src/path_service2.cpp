@@ -22,8 +22,8 @@ using namespace std;
 
 //some tunable constants, global
 const double g_move_speed = 0.5; // set forward speed to this value, e.g. 1m/s
-const double g_spin_speed = 1.0; // set yaw rate to this value, e.g. 1 rad/s
-const double g_sample_dt = 0.01;
+const double g_spin_speed = 0.3; // set yaw rate to this value, e.g. 1 rad/s
+const double g_sample_dt = 0.005;
 const double g_dist_tol = 0.01; // 1cm
 //global variables, including a publisher object
 geometry_msgs::Twist g_twist_cmd;
@@ -49,10 +49,11 @@ double sgn(double x) { if (x>0.0) {return 1.0; }
 
 //a function to consider periodicity and find min delta angle
 double min_spin(double spin_angle) {
+    ROS_INFO("sping_angle = %f", spin_angle);
     if (spin_angle>PI) {
-	spin_angle -= 2.0*PI;}
-    if (spin_angle< - PI) {
-	spin_angle += 2.0*PI;}
+	spin_angle -= PI*2;}
+    if (spin_angle<-PI) {
+	spin_angle += PI*2;}
      return spin_angle;   
 }            
 
@@ -109,7 +110,7 @@ void do_halt() {
     ros::Rate loop_timer(1/g_sample_dt);   
     g_twist_cmd.angular.z= 0.0;
     g_twist_cmd.linear.x=0.0;
-    for (int i=0;i<10;i++) {
+    for (int i=0;i<5;i++) {
           g_twist_commander.publish(g_twist_cmd);
           loop_timer.sleep(); 
           }   
@@ -138,6 +139,9 @@ void g_and_dist(geometry_msgs::Pose current_pose, geometry_msgs::Pose goal_pose,
     dist = (dist_x*2 + dist_y*2) / 2;
     heading = atan2(dist_y, dist_x);
     ROS_INFO("heading = %f", heading);
+    if(dist < 0) {
+	dist *= -1;
+    }
 }
 
 
@@ -158,8 +162,7 @@ bool callback(assignment_3::PathSrvRequest& request, assignment_3::PathSrvRespon
         ROS_INFO("pose %d: desired yaw = %f; desired (x,y) = (%f,%f)",i,yaw_desired, pose_desired.position.x,pose_desired.position.y); 
         ROS_INFO("current (x,y) = (%f, %f)",g_current_pose.position.x,g_current_pose.position.y);
         ROS_INFO("travel distance = %f",travel_distance);         
-        
-        
+         
         // a quaternion is overkill for navigation in a plane; really only need a heading angle
         // this yaw is measured CCW from x-axis
         // GET RID OF NEXT LINE AFTER FIXING g_and_dist()
