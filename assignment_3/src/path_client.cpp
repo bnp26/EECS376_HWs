@@ -72,13 +72,13 @@ int main(int argc, char **argv) {
     path_srv.request.nav_path.poses.push_back(pose_stamped);
     //go up 7
     pose.position.x = 3;
-    pose.position.y = 12;
+    pose.position.y = 12.1;
     ROS_INFO("should have moved to coordinate (%f, %f)", pose.position.x, pose.position.y);
     pose_stamped.pose = pose;
     path_srv.request.nav_path.poses.push_back(pose_stamped);
     //go left 3
     pose.position.x = 0;
-    pose.position.y = 12;
+    pose.position.y = 12.1;
     ROS_INFO("should have moved to coordinate (%f, %f)", pose.position.x, pose.position.y);
     pose_stamped.pose = pose;
     path_srv.request.nav_path.poses.push_back(pose_stamped);
