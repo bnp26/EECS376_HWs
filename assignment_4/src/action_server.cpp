@@ -8,7 +8,8 @@
 // i.e., equivalent to expressing subgoals in odom frame
 
 #include <ros/ros.h>
-#include <assignment_4/PathSrv.h>
+#include <actionlib/server/simple_action_server.h>
+#include <assignment_4/moveAction.h>
 #include <nav_msgs/Path.h>
 #include <geometry_msgs/Pose.h>
 #include <geometry_msgs/Twist.h>
@@ -30,16 +31,129 @@ geometry_msgs::Twist g_twist_cmd;
 ros::Publisher g_twist_commander; //global publisher object
 geometry_msgs::Pose g_current_pose; // not really true--should get this from odom 
 
+geometry_msgs::Pose goal_pose;
+geometry_msgs::Pose moving_pose;
 
-// here are a few useful utility functions:
+//here are a few useful utility functions:
 double sgn(double x);
 double min_spin(double spin_angle);
 double convertPlanarQuat2Phi(geometry_msgs::Quaternion quaternion);
+
 geometry_msgs::Quaternion convertPlanarPhi2Quaternion(double phi);
 
 void do_halt();
 void do_move(double distance);
 void do_spin(double spin_ang);
+void g_and_dist(geometry_msgs::Pose current_pose, geometry_msgs::Pose goal_pose,double &dist, double &heading);
+geometry_msgs::Pose convertArrays2Pose(double[] position, double[] orientation);
+double[] getPositionArrayFromPose(geometry_msgs::Pose given_pose);
+double[] getOrientationArrayFromPose(geometry_msgs::Pose given_pose);
+
+class MoveActionServer {
+private:
+
+    ros::NodeHandle nh_;  // we'll need a node handle; get one upon instantiation
+
+    // this class will own a "SimpleActionServer" called "as_".
+    // it will communicate using messages defined in assignment_4/action/move.action
+    // the type "moveAction" is auto-generated from our name "move" and generic name "Action"
+   	actionlib::SimpleActionServer<assignment_4::moveAction> as_;
+
+    // here are some message types to communicate with our client(s)
+    assignment_4::moveGoal goal_; // goal message, received from client
+    assignment_4::moveResult result_; // put results here, to be sent back to the client when done w/ goal
+    assignment_4::moveFeedback feedback_; // for feedback 
+    //  use: as_.publishFeedback(feedback_); to send incremental feedback to the client
+public:
+    MoveActionServer(); //define the body of the constructor outside of class definition
+
+    ~MoveActionServer(void) {
+    }
+    // Action Interface
+	void executeCB(const actionlib::SimpleActionServer<assignment_4::moveAction>::GoalConstPtr& goal);
+};
+
+
+
+MoveActionServer::MoveActionServer() :
+   as_(nh_, "move_action", boost::bind(&MoveActionServer::executeCB, this, _1),false) 
+// in the above initialization, we name the server "example_action"
+//  clients will need to refer to this name to connect with this server
+{
+    ROS_INFO("in constructor of moveActionServer...");
+    // do any other desired initializations here...specific to your implementation
+
+    as_.start(); //start the server running
+}
+
+//executeCB implementation: this is a member method that will get registered with the action server
+// argument type is very long.  Meaning:
+// actionlib is the package for action servers
+// MoveActionServer is a templated class in this package (defined in the "actionlib" ROS package)
+// <assignment_4::moveAction> customizes the simple action server to use our own "action" message 
+// defined in our package, "assignment_4", in the subdirectory "action", called "move.action"
+// The name "move" is prepended to other message types created automatically during compilation.
+// e.g.,  "moveAction" is auto-generated from (our) base name "move" and generic name "Action"
+void MoveActionServer::executeCB(const actionlib::SimpleActionServer<assignment_4::moveAction>::GoalConstPtr& goal) {
+    ROS_INFO("in executeCB");
+	
+	goal_pose = convertArrays2Pose(goal->position_input, goal->orientation_input);
+	moving_pose = convertArrays2Pose(goal->position_input, goal->orientation_input);
+
+    ROS_INFO("goal position is: (%f, %f, %f)", goal_pose.position.x, goal_pose.position.y, goal_pose.position.z);
+	ROS_INFO("goal orientation is: %f", convertPlanarQuat2Phi(goal_pose.orientation));
+    //do work here: this is where your interesting code goes
+	
+    while (goal->num_goals > 0) {
+       ROS_INFO("number of goals = %d", goal->num_goals);
+
+       // each iteration, check if cancellation has been ordered
+       if (as_.isPreemptRequested()){
+          ROS_WARN("goal cancelled!");
+
+		  result_.position_output = getPositionArrayFromPose(moving_pose);
+		  result_.orientation_output = getOrientationArrayFromPose(moving_pose);
+
+          as_.setAborted(result_); // tell the client we have given up on this goal; send the result message as well
+          return; // done with callback
+        }
+
+       //if here, then goal is still valid; provide some feedback
+	   
+	   	feedback_.position_output = getPositionArrayFromPose(moving_pose);
+	   	feedback_.orientation_output = getOrientationArrayFromPose(moving_pose);
+		
+		as_.publishFeedback(feedback_); // send feedback to the action client that requested this goal
+		
+		double yaw_desired, yaw_current, distance, spin_angle;
+
+		g_and_dist(moving_pose, goal_pose, distance, yaw_desired);
+
+		ROS_INFO("pose %d: desired yaw = %f", goal->num_goals, yaw_desired);        
+        yaw_current = convertPlanarQuat2Phi(g_current_pose.orientation); //our current yaw--should use a sensor
+        spin_angle = yaw_desired - yaw_current; // spin this much
+        spin_angle = min_spin(spin_angle);// but what if this angle is > pi?  then go the other way
+        do_spin(spin_angle); // carry out this incremental action
+        // we will just assume that this action was successful--really should have sensor feedback here
+	    pose_desired.orientation = convertPlanarPhi2Quaternion(yaw_desired);
+    	ROS_INFO("pose_desired.orientation = %f", yaw_desired);  
+        moving_pose.orientation = pose_desired.orientation; // assumes got to desired orientation precisely
+        moving_pose.position = pose_desired.position;
+
+		//timer.sleep(); //wait 1 sec between loop iterations of this timer
+    }
+    //if we survive to here, then the goal was successfully accomplished; inform the client
+    result_.position_output[0] = moving_pose.position.x; //value should be zero, if completed countdown
+    result_.position_output[1] = moving_pose.position.y; //value should be zero, if completed countdown
+    result_.position_output[2] = moving_pose.position.z; //value should be zero, if completed countdown
+
+    result_.orientation_output[0] = moving_pose.orientation.x; //value should be zero, if completed countdown
+    result_.orientation_output[1] = moving_pose.orientation.y; //value should be zero, if completed countdown
+    result_.orientation_output[2] = moving_pose.orientation.z; //value should be zero, if completed countdown
+    result_.orientation_output[3] = moving_pose.orientation.w; //value should be zero, if completed countdown
+    as_.setSucceeded(result_); // return the "result" message to client, along with "success" status
+}
+
 
 //signum function: strip off and return the sign of the argument
 double sgn(double x) { if (x>0.0) {return 1.0; }
@@ -115,7 +229,44 @@ void do_halt() {
           loop_timer.sleep(); 
           }   
 }
+//converts two given arrays to a Pose
+geometry_msgs::Pose convertArrays2Pose(double[] position, double[] orientation) {
+	geometry_msgs::Pose new_pose;
 
+	new_pose.position.x = position[0];
+	new_pose.position.y = position[1];
+	new_pose.position.z = position[2];
+
+	new_pose.orientation.x = orientation[0];
+	new_pose.orientation.y = orientation[1];
+	new_pose.orientation.z = orientation[2];
+	new_pose.orientation.w = orientation[3];
+
+	return new_pose;
+}
+
+//gets an array of doubles equivilent to a given Pose's position
+double[] getPositionArrayFromPose(geometry_msgs::Pose given_pose) {
+	double[] position_array = double[3];
+
+	position_array[0] = given_pose.position.x;
+	position_array[1] = given_pose.position.y;
+	position_array[2] = given_pose.position.z;
+
+	return position_array;
+}
+
+//gets an array of doubles equivilent to a given Pose's orientation
+double[] getOrientationArrayFromPose(geometry_msgs::Pose given_pose) {
+	double[] orientation_array = double[4];
+
+	orientation_array[0] = given_pose.orientation.x;
+	orientation_array[1] = given_pose.orientation.y;
+	orientation_array[2] = given_pose.orientation.z;
+	orientation_array[3] = given_pose.orientation.w;
+
+	return orientation_array;
+}
 //THIS FUNCTION IS NOT FILLED IN: NEED TO COMPUTE HEADING AND TRAVEL DISTANCE TO MOVE
 //FROM START TO GOAL
 void g_and_dist(geometry_msgs::Pose current_pose, geometry_msgs::Pose goal_pose,double &dist, double &heading) {
@@ -140,11 +291,11 @@ void g_and_dist(geometry_msgs::Pose current_pose, geometry_msgs::Pose goal_pose,
     heading = atan2(dist_y, dist_x);
     ROS_INFO("heading = %f", heading);
     if(dist < 0) {
-	dist *= -1;
+		dist *= -1;
     }
 }
 
-
+/*
 bool callback(assignment_4::PathSrvRequest& request, assignment_4::PathSrvResponse& response)
 {
     ROS_INFO("callback activated");
@@ -207,20 +358,18 @@ void do_inits(ros::NodeHandle &n) {
     // we declared g_twist_commander as global, but never set it up; do that now that we have a node handle
     g_twist_commander = n.advertise<geometry_msgs::Twist>("/robot0/cmd_vel", 1);    
 }
+*/
+int main(int argc, char** argv) {
+    ros::init(argc, argv, "timer_action_server_node"); // name this node 
 
-int main(int argc, char **argv)
-{
-  ros::init(argc, argv, "path_service");
-  ros::NodeHandle n;
-  
-  // to clean up "main", do initializations in a separate function
-  // a poor-man's class constructor
-  do_inits(n); //pass in a node handle so this function can set up publisher with it
-  
-  // establish a service to receive path commands
-  ros::ServiceServer service = n.advertiseService("path_service", callback);
-  ROS_INFO("Ready to accept paths.");
-  ros::spin(); //callbacks do all the work now
+    ROS_INFO("instantiating the timer_action_server: ");
 
-  return 0;
+    MoveActionServer as_object; // create an instance of the class "ExampleActionServer"
+
+    ROS_INFO("going into spin");
+    // from here, all the work is done in the action server, with the interesting stuff done within "executeCB()"
+    // you will see 5 new topics under example_action: cancel, feedback, goal, result, status
+    ros::spin();
+
+    return 0;
 }

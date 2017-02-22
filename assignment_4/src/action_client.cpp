@@ -9,23 +9,20 @@
 #include <nav_msgs/Path.h>
 #include <geometry_msgs/Pose.h>
 #include <geometry_msgs/PoseStamped.h>
+#include <std_msgs/Bool.h> // boolean message
+#include <std_msgs/Int8.h>
 using namespace std;
 
 bool g_lidar_alarm=false; // global var for lidar alarm
 int g_lidar_alarm_index = 0;
 
-void doneCb(const actionlib::SimpleClientGoalState& state,
-	    const assignment_4::moveResultConstPtr& result) {
-    ROS_INFO(" doneCb: server responded with state [%s]", state.toString().c_str());
-    int diff = result->output - result->goal_stamp;
-    ROS_INFO("got result output = %d; goal_stamp = %d; diff = %d", result->output, result->goal_stamp, diff);
-}
+geometry_msgs::Pose current_pose, starting_pose;
 
 void alarmCallback(const std_msgs::Bool& alarm_msg) 
 { 
     g_lidar_alarm = alarm_msg.data; //make the alarm status global, so main() can use it
     if (g_lidar_alarm) {
-	ROS_INFO("LIDAR alarm received!"); 
+		ROS_INFO("LIDAR alarm received!"); 
     }
 } 
 
@@ -46,102 +43,102 @@ geometry_msgs::Quaternion convertPlanarPhi2Quaternion(double phi) {
     return quaternion;
 }
 
+// a useful conversion function: from quaternion to yaw
+double convertPlanarQuat2Phi(geometry_msgs::Quaternion quaternion) {
+    double quat_z = quaternion.z;
+    double quat_w = quaternion.w;
+    double phi = 2.0 * atan2(quat_z, quat_w); // cheap conversion from quaternion to heading for planar motion
+    return phi;
+}
+
+void doneCb(const actionlib::SimpleClientGoalState& state,
+			const assignment_4::moveResultConstPtr& result) {
+    ROS_INFO(" doneCb: server responded with state [%s]", state.toString().c_str());
+	
+	geometry_msgs::Pose pose_result;
+
+   	pose_result.orientation.x = result->orientation_output[0];
+   	pose_result.orientation.y = result->orientation_output[1];
+   	pose_result.orientation.z = result->orientation_output[2];
+   	pose_result.orientation.w = result->orientation_output[3];
+	
+	pose_result.position.x = result->position_output[0];
+	pose_result.position.y = result->position_output[1];
+	pose_result.position.z = result->position_output[2];
+
+    ROS_INFO("RESULTS: ");
+	ROS_INFO("goal position = (%f, %f, %f)", pose_result.position.x, pose_result.position.y, pose_result.position.z);
+	ROS_INFO("goal heading = %f", convertPlanarQuat2Phi(pose_result.orientation));
+}
+
+void feedbackCb(const assignment_4::moveFeedbackConstPtr& feedback){
+	ROS_INFO("inside feedbackCB");
+	
+	geometry_msgs::Pose current_pose;
+
+	current_pose.position.x = feedback->position_fdbk[0];
+	current_pose.position.y = feedback->position_fdbk[1];
+	current_pose.position.z = feedback->position_fdbk[2];
+
+   	current_pose.orientation.x = feedback->orientation_fdbk[0];
+   	current_pose.orientation.y = feedback->orientation_fdbk[1];
+   	current_pose.orientation.z = feedback->orientation_fdbk[2];
+   	current_pose.orientation.w = feedback->orientation_fdbk[3];
+
+    ROS_INFO("RESULTS: ");
+	ROS_INFO("goal position = (%f, %f, %f)", current_pose.position.x, current_pose.position.y, current_pose.position.z);
+	ROS_INFO("goal heading = %f", convertPlanarQuat2Phi(current_pose.orientation));
+}
+
+void activeCb() {
+	ROS_INFO("Goal just went active");
+}
+
 int main(int argc, char **argv) {
     ros::init(argc, argv, "action_client_node");
     int g_count = 0;
-    assignment_4::moveGoal goal;
-    actionlib::SimpleActionClient<assignment_4::moveAction> action_client("movement_action", true);
-    ros::NodeHandle n;
+	
+	ros::NodeHandle n;
+
+	assignment_4::moveGoal goal;
+	actionlib::SimpleActionClient<assignment_4::moveAction> action_client("movement_action", true);
+
+    ros::Subscriber alarm_subscriber = n.subscribe("lidar_alarm",1,alarmCallback); 
+	ros::Subscriber lidar_distance = n.subscribe("lidar_alarm_index",1,distanceCallback);
+    geometry_msgs::Quaternion quat;
+
     ROS_INFO("waiting for server: ");
     bool server_exists = action_client.waitForServer(ros::Duration(5.0)); // wait for up to 5 seconds
-    ros::ServiceClient client = n.serviceClient<assignment_4::PathSrv>("path_service");
-    ros::Subscriber alarm_subscriber = n.subscribe("lidar_alarm",1,alarmCallback); 
-            ros::Subscriber lidar_distance = n.subscribe("lidar_alarm_index",1,distanceCallback);
-    geometry_msgs::Quaternion quat;
-    
-    while (!client.exists()) {
-      ROS_INFO("waiting for service...");
-      ros::Duration(1.0).sleep();
-    }
-    ROS_INFO("connected client to service");
-    assignment_4::PathSrv path_srv;
-   
-    while (ros::ok())
-    {
-	geometry_msgs::PoseStamped pose_stamped;
-	geometry_msgs::Pose pose;
-	pose.position.x = 0.0; // say desired x-coord is 3
-	pose.position.y = 12.0;
-	pose.position.z = 0.0; // let's hope so!
-	pose.orientation.x = 0.0; //always, for motion in horizontal plane
-	pose.orientation.y = 0.0; // ditto
-	pose.orientation.z = 0.0; // implies oriented at yaw=0, i.e. along x axis
-	pose.orientation.w = 1.0; //sum of squares of all components of unit quaternion is 1
-    }
 
+	if(!server_exists) {
+		ROS_WARN("could not connect to server; halting");
+		return 0; // bail out; optionally, could print a warning message and retry
+	}
+
+    ROS_INFO("connected to action server");
+
+	while (true) {
+        // stuff a goal message:
+        g_count++;
+        goal.num_goals = 1; // this merely sequentially numbers the goals sent
+        //action_client.sendGoal(goal); // simple example--send goal, but do not specify callbacks
+        //action_client.sendGoal(goal, &doneCb); // we could also name additional callback functions here, if desired
+        action_client.sendGoal(goal, &doneCb, &activeCb, &feedbackCb); //e.g., like this
+
+        bool finished_before_timeout = action_client.waitForResult(); // wait forever...
+        if (!finished_before_timeout) {
+            ROS_WARN("giving up waiting on result for goal number %d", g_count);
+            return 0;
+        } else {
+            //if here, then server returned a result to us
+        }
+
+    }
     while (g_lidar_alarm && ros::ok()) 
     {
-		
-    }
+    	ROS_WARN("ALARM HAS GONE OFF!");
+	}
 
-    //create some path points...this should be done by some intelligent algorithm, but we'll hard-code it here
-    geometry_msgs::PoseStamped pose_stamped;
-    geometry_msgs::Pose pose;
-    pose.position.x = 3.0; // say desired x-coord is 3
-    pose.position.y = 0.0;
-    pose.position.z = 0.0; // let's hope so!
-    pose.orientation.x = 0.0; //always, for motion in horizontal plane
-    pose.orientation.y = 0.0; // ditto
-    pose.orientation.z = 0.0; // implies oriented at yaw=0, i.e. along x axis
-    pose.orientation.w = 1.0; //sum of squares of all components of unit quaternion is 1
-    //go right 3 
-    pose_stamped.pose = pose;
-    path_srv.request.nav_path.poses.push_back(pose_stamped);
-    ROS_INFO("Should have moved to coordinate (%f, %f)", pose.position.x, pose.position.y); 
-    //go up 3 
-    pose.position.x = 3;
-    pose.position.y = 3;
-    ROS_INFO("should have moved to coordinate (%f, %f)", pose.position.x, pose.position.y);
-    pose_stamped.pose = pose;
-    path_srv.request.nav_path.poses.push_back(pose_stamped);
-    //go right 4
-    pose.position.x = 7;
-    pose.position.y = 3;
-    ROS_INFO("should have moved to coordinate (%f, %f)", pose.position.x, pose.position.y);
-    pose_stamped.pose = pose;
-    path_srv.request.nav_path.poses.push_back(pose_stamped);
-    //go up 2
-    pose.position.x = 7;
-    pose.position.y = 5.25;
-    ROS_INFO("should have moved to coordinate (%f, %f)", pose.position.x, pose.position.y);
-    pose_stamped.pose = pose;
-    path_srv.request.nav_path.poses.push_back(pose_stamped);
-    //go left 4
-    pose.position.x = 3;
-    pose.position.y = 5.25;
-    ROS_INFO("should have moved to coordinate (%f, %f)", pose.position.x, pose.position.y);
-    pose_stamped.pose = pose;
-    path_srv.request.nav_path.poses.push_back(pose_stamped);
-    //go up 7
-    pose.position.x = 3;
-    pose.position.y = 12;
-    ROS_INFO("should have moved to coordinate (%f, %f)", pose.position.x, pose.position.y);
-    pose_stamped.pose = pose;
-    path_srv.request.nav_path.poses.push_back(pose_stamped);
-    //go left 3
-    pose.position.x = 0;
-    pose.position.y = 12;
-    ROS_INFO("should have moved to coordinate (%f, %f)", pose.position.x, pose.position.y);
-    pose_stamped.pose = pose;
-    path_srv.request.nav_path.poses.push_back(pose_stamped);
-
-    // some more poses...
-    // quat = convertPlanarPhi2Quaternion(1.57); // get a quaternion corresponding to this heading
-    // pose_stamped.pose.orientation = quat;   
-    // pose_stamped.pose.position.y=3.0; // say desired y-coord is 1.0
-    // path_srv.request.nav_path.poses.push_back(pose_stamped);
-    // quat = convertPlanarPhi2Quaternion(3.14);
-    client.call(path_srv);
 
     return 0;
 }

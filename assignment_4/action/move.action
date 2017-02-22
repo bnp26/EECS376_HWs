@@ -1,10 +1,10 @@
 #move definition
 float64[] position_input
 float64[] orientation_input
+int32 num_goals
 ---
 float64[] position_output
 float64[] orientation_output
-int32 goal_stamp
 ---
-float64[] position_fdb
-float64[] orientation_fdb
+float64[] position_fdbk
+float64[] orientation_fdbk
