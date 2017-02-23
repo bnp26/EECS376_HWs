@@ -15,6 +15,7 @@ using namespace std;
 
 bool g_lidar_alarm=false; // global var for lidar alarm
 int g_lidar_alarm_index = 0;
+bool g_goal_active = false;
 
 geometry_msgs::Pose current_pose, starting_pose;
 
@@ -54,18 +55,9 @@ double convertPlanarQuat2Phi(geometry_msgs::Quaternion quaternion) {
 void doneCb(const actionlib::SimpleClientGoalState& state,
 			const assignment_4::moveResultConstPtr& result) {
     ROS_INFO(" doneCb: server responded with state [%s]", state.toString().c_str());
-	
-	geometry_msgs::Pose pose_result;
+	geometry_msgs::Pose pose_result = result->pose_output;
 
-   	pose_result.orientation.x = result->orientation_output[0];
-   	pose_result.orientation.y = result->orientation_output[1];
-   	pose_result.orientation.z = result->orientation_output[2];
-   	pose_result.orientation.w = result->orientation_output[3];
-	
-	pose_result.position.x = result->position_output[0];
-	pose_result.position.y = result->position_output[1];
-	pose_result.position.z = result->position_output[2];
-
+	g_goal_active = false;
     ROS_INFO("RESULTS: ");
 	ROS_INFO("goal position = (%f, %f, %f)", pose_result.position.x, pose_result.position.y, pose_result.position.z);
 	ROS_INFO("goal heading = %f", convertPlanarQuat2Phi(pose_result.orientation));
@@ -75,8 +67,9 @@ void feedbackCb(const assignment_4::moveFeedbackConstPtr& feedback){
 	ROS_INFO("inside feedbackCB");
 	
 	geometry_msgs::Pose current_pose;
+	current_pose = feedback->pose_fdbk;
 
-	current_pose.position.x = feedback->position_fdbk[0];
+	/*current_pose.position.x = feedback->position_fdbk[0];
 	current_pose.position.y = feedback->position_fdbk[1];
 	current_pose.position.z = feedback->position_fdbk[2];
 
@@ -84,14 +77,16 @@ void feedbackCb(const assignment_4::moveFeedbackConstPtr& feedback){
    	current_pose.orientation.y = feedback->orientation_fdbk[1];
    	current_pose.orientation.z = feedback->orientation_fdbk[2];
    	current_pose.orientation.w = feedback->orientation_fdbk[3];
-
+*/
     ROS_INFO("RESULTS: ");
-	ROS_INFO("goal position = (%f, %f, %f)", current_pose.position.x, current_pose.position.y, current_pose.position.z);
-	ROS_INFO("goal heading = %f", convertPlanarQuat2Phi(current_pose.orientation));
+	
+	ROS_INFO("current position = (%f, %f, %f)", current_pose.position.x, current_pose.position.y, current_pose.position.z);
+	ROS_INFO("current heading = %f", convertPlanarQuat2Phi(current_pose.orientation));
 }
 
 void activeCb() {
 	ROS_INFO("Goal just went active");
+	g_goal_active = true;
 }
 
 int main(int argc, char **argv) {
@@ -101,7 +96,7 @@ int main(int argc, char **argv) {
 	ros::NodeHandle n;
 
 	assignment_4::moveGoal goal;
-	actionlib::SimpleActionClient<assignment_4::moveAction> action_client("movement_action", true);
+	actionlib::SimpleActionClient<assignment_4::moveAction> action_client("move_action", true);
 
     ros::Subscriber alarm_subscriber = n.subscribe("lidar_alarm",1,alarmCallback); 
 	ros::Subscriber lidar_distance = n.subscribe("lidar_alarm_index",1,distanceCallback);
@@ -121,6 +116,18 @@ int main(int argc, char **argv) {
         // stuff a goal message:
         g_count++;
         goal.num_goals = 1; // this merely sequentially numbers the goals sent
+		geometry_msgs::PoseStamped pose_stamped;
+    	geometry_msgs::Pose pose;
+    	pose.position.x = 0.0; // say desired x-coord is 3
+    	pose.position.y = 0.0;
+    	pose.position.z = 12.0; // let's hope so!
+    	pose.orientation.x = 0.0; //always, for motion in horizontal plane
+    	pose.orientation.y = 0.0; // ditto
+    	pose.orientation.z = 0.0; // implies oriented at yaw=0, i.e. along x axis
+    	pose.orientation.w = 1.0; //sum of squares of all components of unit quaternion is 1
+    	//go right 3 
+    	pose_stamped.pose = pose;
+    	goal.input_path.poses.push_back(pose_stamped);
         //action_client.sendGoal(goal); // simple example--send goal, but do not specify callbacks
         //action_client.sendGoal(goal, &doneCb); // we could also name additional callback functions here, if desired
         action_client.sendGoal(goal, &doneCb, &activeCb, &feedbackCb); //e.g., like this

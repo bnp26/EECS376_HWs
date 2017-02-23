@@ -1,4 +1,3 @@
-//path_service:
 // example showing how to receive a nav_msgs/Path request
 // run with complementary path_client
 // responds immediately to ack new path...but execution takes longer
@@ -12,6 +11,7 @@
 #include <assignment_4/moveAction.h>
 #include <nav_msgs/Path.h>
 #include <geometry_msgs/Pose.h>
+#include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/Twist.h>
 #include <iostream>
 #include <string>
@@ -45,11 +45,7 @@ void do_halt();
 void do_move(double distance);
 void do_spin(double spin_ang);
 void g_and_dist(geometry_msgs::Pose current_pose, geometry_msgs::Pose goal_pose,double &dist, double &heading);
-
-geometry_msgs::Pose convertArrays2Pose(const std::vector<double> position, const std::vector<double> orientation);
-
-double * getPositionArrayFromPose(geometry_msgs::Pose given_pose);
-double * getOrientationArrayFromPose(geometry_msgs::Pose given_pose);
+void do_inits(ros::NodeHandle &n);
 
 class MoveActionServer {
 private:
@@ -82,6 +78,7 @@ MoveActionServer::MoveActionServer() :
 // in the above initialization, we name the server "example_action"
 //  clients will need to refer to this name to connect with this server
 {
+	do_inits(nh_);	
     ROS_INFO("in constructor of moveActionServer...");
     // do any other desired initializations here...specific to your implementation
 
@@ -98,35 +95,38 @@ MoveActionServer::MoveActionServer() :
 // e.g.,  "moveAction" is auto-generated from (our) base name "move" and generic name "Action"
 void MoveActionServer::executeCB(const actionlib::SimpleActionServer<assignment_4::moveAction>::GoalConstPtr& goal) {
     ROS_INFO("in executeCB");
-	
-	goal_pose = convertArrays2Pose(goal->position_input, goal->orientation_input);
-	moving_pose = convertArrays2Pose(goal->position_input, goal->orientation_input);
+    ROS_INFO("number if goals is %d", goal->num_goals);
+	goal_pose = goal->input_path.poses[goal->num_goals-1].pose;
+	ROS_INFO("almost at for loop");
+	for(int i = 0; i<goal->num_goals; i++) {
+		moving_pose = goal->input_path.poses[i].pose;
 
-	ROS_INFO("goal position is: (%f, %f, %f)", goal_pose.position.x, goal_pose.position.y, goal_pose.position.z);
-	ROS_INFO("goal orientation is: %f", convertPlanarQuat2Phi(goal_pose.orientation));
-    //do work here: this is where your interesting code goes
-	
-    while (goal->num_goals > 0) {
-       ROS_INFO("number of goals = %d", goal->num_goals);
-
-       // each iteration, check if cancellation has been ordered
-       if (as_.isPreemptRequested()){
-          ROS_WARN("goal cancelled!");
-
-		  result_.position_output = getPositionArrayFromPose(moving_pose);
-		  result_.orientation_output = getOrientationArrayFromPose(moving_pose);
-
-          as_.setAborted(result_); // tell the client we have given up on this goal; send the result message as well
-          return; // done with callback
+		ROS_INFO("goal position is: (%f, %f, %f)", goal_pose.position.x, goal_pose.position.y, goal_pose.position.z);
+		ROS_INFO("goal orientation is: %f", convertPlanarQuat2Phi(goal_pose.orientation));
+		//do work here: this is where your interesting code goes
+		ROS_INFO("number of goals = %d", goal->num_goals);
+		ROS_INFO("current goal = %d", i);
+    	// each iteration, check if cancellation has been ordered
+       	if (as_.isPreemptRequested()){
+        	ROS_WARN("goal cancelled!");
+			do_halt();
+		  	result_.output_path = goal->input_path;
+			if(i > 0) {
+				for(int j = 0; j < goal->num_goals-i; j++) {
+					result_.output_path.poses[j] = goal->input_path.poses[j+i];
+				}
+			}
+			result_.pose_output = moving_pose;
+			as_.setAborted(result_); // tell the client we have given up on this goal; send the result message as well
+         	return; // done with callback
         }
 
        //if here, then goal is still valid; provide some feedback
-	   
-	   	feedback_.position_output = getPositionArrayFromPose(moving_pose);
-	   	feedback_.orientation_output = getOrientationArrayFromPose(moving_pose);
+		
+	   	feedback_.pose_fdbk = g_current_pose;
 		
 		as_.publishFeedback(feedback_); // send feedback to the action client that requested this goal
-		
+
 		double yaw_desired, yaw_current, distance, spin_angle;
 
 		g_and_dist(moving_pose, goal_pose, distance, yaw_desired);
@@ -137,22 +137,15 @@ void MoveActionServer::executeCB(const actionlib::SimpleActionServer<assignment_
         spin_angle = min_spin(spin_angle);// but what if this angle is > pi?  then go the other way
         do_spin(spin_angle); // carry out this incremental action
         // we will just assume that this action was successful--really should have sensor feedback here
-	    pose_desired.orientation = convertPlanarPhi2Quaternion(yaw_desired);
+	    moving_pose.orientation = convertPlanarPhi2Quaternion(yaw_desired);
     	ROS_INFO("pose_desired.orientation = %f", yaw_desired);  
-        moving_pose.orientation = pose_desired.orientation; // assumes got to desired orientation precisely
-        moving_pose.position = pose_desired.position;
+        g_current_pose.orientation = moving_pose.orientation; // assumes got to desired orientation precisely
+        g_current_pose.position = moving_pose.position;
 
-		//timer.sleep(); //wait 1 sec between loop iterations of this timer
+		do_move(distance);
+	   
+		timer.sleep(); //wait 1 sec between loop iterations of this timer
     }
-    //if we survive to here, then the goal was successfully accomplished; inform the client
-    result_.position_output[0] = moving_pose.position.x; //value should be zero, if completed countdown
-    result_.position_output[1] = moving_pose.position.y; //value should be zero, if completed countdown
-    result_.position_output[2] = moving_pose.position.z; //value should be zero, if completed countdown
-
-    result_.orientation_output[0] = moving_pose.orientation.x; //value should be zero, if completed countdown
-    result_.orientation_output[1] = moving_pose.orientation.y; //value should be zero, if completed countdown
-    result_.orientation_output[2] = moving_pose.orientation.z; //value should be zero, if completed countdown
-    result_.orientation_output[3] = moving_pose.orientation.w; //value should be zero, if completed countdown
     as_.setSucceeded(result_); // return the "result" message to client, along with "success" status
 }
 
@@ -229,46 +222,9 @@ void do_halt() {
     for (int i=0;i<5;i++) {
           g_twist_commander.publish(g_twist_cmd);
           loop_timer.sleep(); 
-          }   
-}
-//converts two given arrays to a Pose
-geometry_msgs::Pose convertArrays2Pose(const std::vector<double> position, const std::vector<double> orientation) {
-	geometry_msgs::Pose new_pose;
-
-	new_pose.position.x = position[0];
-	new_pose.position.y = position[1];
-	new_pose.position.z = position[2];
-
-	new_pose.orientation.x = orientation[0];
-	new_pose.orientation.y = orientation[1];
-	new_pose.orientation.z = orientation[2];
-	new_pose.orientation.w = orientation[3];
-
-	return new_pose;
+    }   
 }
 
-//gets an array of doubles equivilent to a given Pose's position
-double * getPositionArrayFromPose(geometry_msgs::Pose given_pose) {
-	double * position_array;
-
-	position_array[0] = given_pose.position.x;
-	position_array[1] = given_pose.position.y;
-	position_array[2] = given_pose.position.z;
-
-	return position_array;
-}
-
-//gets an array of doubles equivilent to a given Pose's orientation
-double * getOrientationArrayFromPose(geometry_msgs::Pose given_pose) {
-	double* orientation_array;
-
-	orientation_array[0] = given_pose.orientation.x;
-	orientation_array[1] = given_pose.orientation.y;
-	orientation_array[2] = given_pose.orientation.z;
-	orientation_array[3] = given_pose.orientation.w;
-
-	return orientation_array;
-}
 //THIS FUNCTION IS NOT FILLED IN: NEED TO COMPUTE HEADING AND TRAVEL DISTANCE TO MOVE
 //FROM START TO GOAL
 void g_and_dist(geometry_msgs::Pose current_pose, geometry_msgs::Pose goal_pose,double &dist, double &heading) {
@@ -336,7 +292,7 @@ bool callback(assignment_4::PathSrvRequest& request, assignment_4::PathSrvRespon
 
   return true;
 }
-
+*/
 void do_inits(ros::NodeHandle &n) {
   //initialize components of the twist command global variable
     g_twist_cmd.linear.x=0.0;
@@ -360,10 +316,10 @@ void do_inits(ros::NodeHandle &n) {
     // we declared g_twist_commander as global, but never set it up; do that now that we have a node handle
     g_twist_commander = n.advertise<geometry_msgs::Twist>("/robot0/cmd_vel", 1);    
 }
-*/
-int main(int argc, char** argv) {
-    ros::init(argc, argv, "timer_action_server_node"); // name this node 
 
+int main(int argc, char** argv) {
+    ros::init(argc, argv, "action_server_node"); // name this node 
+	//do_inits(n);
     ROS_INFO("instantiating the timer_action_server: ");
 
     MoveActionServer as_object; // create an instance of the class "ExampleActionServer"

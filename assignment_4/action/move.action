@@ -1,11 +1,8 @@
 #move definition
 nav_msgs/Path input_path
-float64[] position_input
-float64[] orientation_input
 int32 num_goals
 ---
-float64[] position_output
-float64[] orientation_output
+nav_msgs/Path output_path
+geometry_msgs/Pose pose_output
 ---
-float64[] position_fdbk
-float64[] orientation_fdbk
+geometry_msgs/Pose pose_fdbk
