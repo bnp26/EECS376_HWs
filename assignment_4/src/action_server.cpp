@@ -45,9 +45,11 @@ void do_halt();
 void do_move(double distance);
 void do_spin(double spin_ang);
 void g_and_dist(geometry_msgs::Pose current_pose, geometry_msgs::Pose goal_pose,double &dist, double &heading);
-geometry_msgs::Pose convertArrays2Pose(double[] position, double[] orientation);
-double[] getPositionArrayFromPose(geometry_msgs::Pose given_pose);
-double[] getOrientationArrayFromPose(geometry_msgs::Pose given_pose);
+
+geometry_msgs::Pose convertArrays2Pose(const std::vector<double> position, const std::vector<double> orientation);
+
+double * getPositionArrayFromPose(geometry_msgs::Pose given_pose);
+double * getOrientationArrayFromPose(geometry_msgs::Pose given_pose);
 
 class MoveActionServer {
 private:
@@ -100,7 +102,7 @@ void MoveActionServer::executeCB(const actionlib::SimpleActionServer<assignment_
 	goal_pose = convertArrays2Pose(goal->position_input, goal->orientation_input);
 	moving_pose = convertArrays2Pose(goal->position_input, goal->orientation_input);
 
-    ROS_INFO("goal position is: (%f, %f, %f)", goal_pose.position.x, goal_pose.position.y, goal_pose.position.z);
+	ROS_INFO("goal position is: (%f, %f, %f)", goal_pose.position.x, goal_pose.position.y, goal_pose.position.z);
 	ROS_INFO("goal orientation is: %f", convertPlanarQuat2Phi(goal_pose.orientation));
     //do work here: this is where your interesting code goes
 	
@@ -230,7 +232,7 @@ void do_halt() {
           }   
 }
 //converts two given arrays to a Pose
-geometry_msgs::Pose convertArrays2Pose(double[] position, double[] orientation) {
+geometry_msgs::Pose convertArrays2Pose(const std::vector<double> position, const std::vector<double> orientation) {
 	geometry_msgs::Pose new_pose;
 
 	new_pose.position.x = position[0];
@@ -246,8 +248,8 @@ geometry_msgs::Pose convertArrays2Pose(double[] position, double[] orientation) 
 }
 
 //gets an array of doubles equivilent to a given Pose's position
-double[] getPositionArrayFromPose(geometry_msgs::Pose given_pose) {
-	double[] position_array = double[3];
+double * getPositionArrayFromPose(geometry_msgs::Pose given_pose) {
+	double * position_array;
 
 	position_array[0] = given_pose.position.x;
 	position_array[1] = given_pose.position.y;
@@ -257,8 +259,8 @@ double[] getPositionArrayFromPose(geometry_msgs::Pose given_pose) {
 }
 
 //gets an array of doubles equivilent to a given Pose's orientation
-double[] getOrientationArrayFromPose(geometry_msgs::Pose given_pose) {
-	double[] orientation_array = double[4];
+double * getOrientationArrayFromPose(geometry_msgs::Pose given_pose) {
+	double* orientation_array;
 
 	orientation_array[0] = given_pose.orientation.x;
 	orientation_array[1] = given_pose.orientation.y;

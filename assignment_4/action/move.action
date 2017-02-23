@@ -1,4 +1,5 @@
 #move definition
+nav_msgs/Path input_path
 float64[] position_input
 float64[] orientation_input
 int32 num_goals
