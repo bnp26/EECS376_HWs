@@ -144,7 +144,6 @@ void MoveActionServer::executeCB(const actionlib::SimpleActionServer<assignment_
 
 		do_move(distance);
 	   
-		timer.sleep(); //wait 1 sec between loop iterations of this timer
     }
     as_.setSucceeded(result_); // return the "result" message to client, along with "success" status
 }
