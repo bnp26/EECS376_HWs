@@ -25,7 +25,7 @@ void alarmCallback(const std_msgs::Bool& alarm_msg)
     if (g_lidar_alarm) {
 		ROS_INFO("LIDAR alarm received!"); 
     }
-} 
+}//h 
 
 void distanceCallback(const std_msgs::Int8& alarm_index)
 {
@@ -93,13 +93,13 @@ int main(int argc, char **argv) {
     ros::init(argc, argv, "action_client_node");
     int g_count = 0;
 	
-	ros::NodeHandle n;
+    ros::NodeHandle n;
 
-	assignment_4::moveGoal goal;
-	actionlib::SimpleActionClient<assignment_4::moveAction> action_client("move_action", true);
+    assignment_4::moveGoal goal;
+    actionlib::SimpleActionClient<assignment_4::moveAction> action_client("move_action", true);
 
     ros::Subscriber alarm_subscriber = n.subscribe("lidar_alarm",1,alarmCallback); 
-	ros::Subscriber lidar_distance = n.subscribe("lidar_alarm_index",1,distanceCallback);
+    ros::Subscriber lidar_distance = n.subscribe("lidar_alarm_index",1,distanceCallback);
     geometry_msgs::Quaternion quat;
 
     ROS_INFO("waiting for server: ");
@@ -116,7 +116,7 @@ int main(int argc, char **argv) {
         // stuff a goal message:
         g_count++;
         goal.num_goals = 1; // this merely sequentially numbers the goals sent
-		geometry_msgs::PoseStamped pose_stamped;
+	geometry_msgs::PoseStamped pose_stamped;
     	geometry_msgs::Pose pose;
     	pose.position.x = 0.0; // say desired x-coord is 3
     	pose.position.y = 0.0;

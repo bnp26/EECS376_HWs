@@ -55,7 +55,7 @@ private:
     // this class will own a "SimpleActionServer" called "as_".
     // it will communicate using messages defined in assignment_4/action/move.action
     // the type "moveAction" is auto-generated from our name "move" and generic name "Action"
-   	actionlib::SimpleActionServer<assignment_4::moveAction> as_;
+    actionlib::SimpleActionServer<assignment_4::moveAction> as_;
 
     // here are some message types to communicate with our client(s)
     assignment_4::moveGoal goal_; // goal message, received from client
@@ -71,14 +71,12 @@ public:
 	void executeCB(const actionlib::SimpleActionServer<assignment_4::moveAction>::GoalConstPtr& goal);
 };
 
-
-
 MoveActionServer::MoveActionServer() :
    as_(nh_, "move_action", boost::bind(&MoveActionServer::executeCB, this, _1),false) 
 // in the above initialization, we name the server "example_action"
 //  clients will need to refer to this name to connect with this server
 {
-	do_inits(nh_);	
+    do_inits(nh_);	
     ROS_INFO("in constructor of moveActionServer...");
     // do any other desired initializations here...specific to your implementation
 
@@ -96,56 +94,54 @@ MoveActionServer::MoveActionServer() :
 void MoveActionServer::executeCB(const actionlib::SimpleActionServer<assignment_4::moveAction>::GoalConstPtr& goal) {
     ROS_INFO("in executeCB");
     ROS_INFO("number if goals is %d", goal->num_goals);
-	goal_pose = goal->input_path.poses[goal->num_goals-1].pose;
-	ROS_INFO("almost at for loop");
-	for(int i = 0; i<goal->num_goals; i++) {
-		moving_pose = goal->input_path.poses[i].pose;
+    ROS_INFO("almost at for loop");
+    for(int i = 0; i<goal->num_goals; i++) {
+	moving_pose = g_current_pose;
+	goal_pose = goal->input_path.poses[i].pose;
 
-		ROS_INFO("goal position is: (%f, %f, %f)", goal_pose.position.x, goal_pose.position.y, goal_pose.position.z);
-		ROS_INFO("goal orientation is: %f", convertPlanarQuat2Phi(goal_pose.orientation));
-		//do work here: this is where your interesting code goes
-		ROS_INFO("number of goals = %d", goal->num_goals);
-		ROS_INFO("current goal = %d", i);
+	ROS_INFO("goal position is: (%f, %f, %f)", goal_pose.position.x, goal_pose.position.y, goal_pose.position.z);
+	ROS_INFO("goal orientation is: %f", convertPlanarQuat2Phi(goal_pose.orientation));
+	//do work here: this is where your interesting code goes
+	ROS_INFO("number of goals = %d", goal->num_goals);
+	ROS_INFO("current goal = %d", i);
     	// each iteration, check if cancellation has been ordered
        	if (as_.isPreemptRequested()){
-        	ROS_WARN("goal cancelled!");
-			do_halt();
-		  	result_.output_path = goal->input_path;
-			if(i > 0) {
-				for(int j = 0; j < goal->num_goals-i; j++) {
-					result_.output_path.poses[j] = goal->input_path.poses[j+i];
-				}
-			}
-			result_.pose_output = moving_pose;
-			as_.setAborted(result_); // tell the client we have given up on this goal; send the result message as well
-         	return; // done with callback
+            ROS_WARN("goal cancelled!");
+	    do_halt();
+	    result_.output_path = goal->input_path;
+	    if(i > 0) {
+		for(int j = 0; j < goal->num_goals-i; j++) {
+		    result_.output_path.poses[j] = goal->input_path.poses[j+i];
+		}
+	    }
+	    result_.pose_output = moving_pose;
+	    as_.setAborted(result_); // tell the client we have given up on this goal; send the result message as well
+            return; // done with callback
         }
 
        //if here, then goal is still valid; provide some feedback
 		
-	   	feedback_.pose_fdbk = g_current_pose;
-		
-		as_.publishFeedback(feedback_); // send feedback to the action client that requested this goal
+	feedback_.pose_fdbk = g_current_pose;
+	ROS_INFO("feedback (x, y) = %f, %f", g_current_pose.position.x, g_current_pose.position.y);
 
-		double yaw_desired, yaw_current, distance, spin_angle;
-
-		g_and_dist(moving_pose, goal_pose, distance, yaw_desired);
-
-		ROS_INFO("pose %d: desired yaw = %f", goal->num_goals, yaw_desired);        
+	as_.publishFeedback(feedback_); // send feedback to the action client that requested this goal
+	
+	double yaw_desired, yaw_current, distance, spin_angle;
+	g_and_dist(moving_pose, goal_pose, distance, yaw_desired);
+	ROS_INFO("number of goals %d: desired yaw = %f", goal->num_goals, yaw_desired);        
+	ROS_INFO("distance = %f", distance);
         yaw_current = convertPlanarQuat2Phi(g_current_pose.orientation); //our current yaw--should use a sensor
         spin_angle = yaw_desired - yaw_current; // spin this much
         spin_angle = min_spin(spin_angle);// but what if this angle is > pi?  then go the other way
         do_spin(spin_angle); // carry out this incremental action
         // we will just assume that this action was successful--really should have sensor feedback here
-	    moving_pose.orientation = convertPlanarPhi2Quaternion(yaw_desired);
-    	ROS_INFO("pose_desired.orientation = %f", yaw_desired);  
-        g_current_pose.orientation = moving_pose.orientation; // assumes got to desired orientation precisely
-        g_current_pose.position = moving_pose.position;
+	moving_pose.orientation = convertPlanarPhi2Quaternion(yaw_desired);
+	g_current_pose = moving_pose;
 
-		do_move(distance);
-	   
+	do_move(distance);
     }
     as_.setSucceeded(result_); // return the "result" message to client, along with "success" status
+    ROS_INFO("WAS SUCCESSFULL");
 }
 
 
@@ -205,6 +201,7 @@ void do_move(double distance) { // always assumes robot is already oriented prop
     double timer=0.0;
     double final_time = fabs(distance)/g_move_speed;
     g_twist_cmd.angular.z = 0.0; //stop spinning
+    ROS_INFO("about to start moving");
     g_twist_cmd.linear.x = sgn(distance)*g_move_speed;
     while(timer<final_time) {
           g_twist_commander.publish(g_twist_cmd);
@@ -248,7 +245,7 @@ void g_and_dist(geometry_msgs::Pose current_pose, geometry_msgs::Pose goal_pose,
     heading = atan2(dist_y, dist_x);
     ROS_INFO("heading = %f", heading);
     if(dist < 0) {
-		dist *= -1;
+	dist = dist * -1;
     }
 }
 
