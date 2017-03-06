@@ -14,7 +14,7 @@ find_package(catkin_simple REQUIRED)
 #find_package(Eigen3 REQUIRED)
 #include_directories(${EIGEN3_INCLUDE_DIR})
 #add_definitions(${EIGEN_DEFINITIONS})
-find_package(Boost REQUIRED COMPONENTS system thread)
+#find_package(Boost REQUIRED COMPONENTS system thread)
 catkin_simple()
 
 # example boost usage
@@ -39,9 +39,17 @@ cs_add_executable(open_loop_controller src/open_loop_controller.cpp)
 cs_add_executable(pub_des_state_path_client src/pub_des_state_path_client.cpp)
 cs_add_executable(pub_des_state_path_client_3x3 src/pub_des_state_path_client_3mx3m_sqr.cpp)
 
+
+target_link_libraries(mobot_pub_des_state traj_builder)
+target_link_libraries(mobot_pub_des_state_startup traj_builder)
+target_link_libraries(open_loop_controller traj_builder)
+target_link_libraries(pub_des_state_path_client traj_builder)
+target_link_libraries(pub_des_state_path_client_3x3 traj_builder)
+
+target_link_libraries(traj_builder_example_main traj_builder)
+
 #the following is required, if desire to link a node in this package with a library created in this same package
 # edit the arguments to reference the named node and named library within this package
-target_link_libraries(traj_builder_example_main traj_builder)
 
 cs_install()
 cs_export()

@@ -1,4 +1,4 @@
-#include <assignment_6/traj_builder.h> //has almost all the headers we need
+#include <traj_builder/traj_builder.h> //has almost all the headers we need
 #include <std_msgs/Float64.h>
 #include <nav_msgs/Odometry.h>
 

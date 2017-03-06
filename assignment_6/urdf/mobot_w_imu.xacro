@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <robot 
      xmlns:xacro="http://www.ros.org/wiki/xacro" name="mobot">
-    <xacro:include filename="$(find mobot_urdf)/urdf/mobot.xacro" /> 
+    <xacro:include filename="$(find assignment_6)/urdf/mobot.xacro" /> 
     
 <link name="imu_link"> 
 </link>

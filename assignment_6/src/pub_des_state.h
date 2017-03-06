@@ -2,7 +2,7 @@
 #define PUB_DES_STATE_H_
 
 #include <queue>
-#include <assignment_6/traj_builder.h> //has almost all the headers we need
+#include <traj_builder/traj_builder.h> //has almost all the headers we need
 #include <std_msgs/Float64.h>
 #include <std_msgs/Bool.h>
 #include <std_srvs/Trigger.h>
@@ -74,7 +74,7 @@ private:
     bool estopServiceCallback(std_srvs::TriggerRequest& request, std_srvs::TriggerResponse& response);
     bool clearEstopServiceCallback(std_srvs::TriggerRequest& request, std_srvs::TriggerResponse& response);
     bool flushPathQueueCB(std_srvs::TriggerRequest& request, std_srvs::TriggerResponse& response);
-    bool appendPathQueueCB(mobot_pub_des_state::pathRequest& request,mobot_pub_des_state::pathResponse& response);
+    bool appendPathQueueCB(assignment_6::pathRequest& request,assignment_6::pathResponse& response);
 
 public:
     DesStatePublisher(ros::NodeHandle& nh);//constructor
