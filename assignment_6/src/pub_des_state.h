@@ -5,9 +5,9 @@
 #include <traj_builder/traj_builder.h> //has almost all the headers we need
 #include <std_msgs/Float64.h>
 #include <std_msgs/Bool.h>
+#include <std_msgs/Int8.h>
 #include <std_srvs/Trigger.h>
 #include <assignment_6/path.h>
-#include <std_msgs/Float64.h>
 
 //constants and parameters:
 const double dt = 0.02; //send desired-state messages at fixed rate, e.g. 0.02 sec = 50Hz
@@ -46,6 +46,10 @@ private:
     int motion_mode_;
     bool e_stop_trigger_; //these are intended to enable e-stop via a service
     bool e_stop_reset_;
+
+    bool g_lidar_alarm_;	//for lidar alarm
+    int g_lidar_alarm_index_;
+
     int traj_pt_i_;
     int npts_traj_;
     double dt_;
@@ -56,21 +60,26 @@ private:
     double omega_max_; 
     double path_move_tol_; 
 
-    // some objects to support service and publisher
+    // some objects to support service
     ros::ServiceServer estop_service_;
     ros::ServiceServer estop_clear_service_;
     ros::ServiceServer flush_path_queue_;
     ros::ServiceServer append_path_;
-    
+    // 2 publisher objectes
     ros::Publisher desired_state_publisher_;
-    ros::Publisher des_psi_publisher_;
-    
+    ros::Publisher des_psi_publisher_;	
+    // 2 subscriber object to listen to /scan
+    ros::Subscriber alarm_subscriber_;	
+    ros::Subscriber lidar_distance_;
     //a trajectory-builder object; 
     TrajBuilder trajBuilder_; 
-
+	
     // member methods:
     void initializePublishers();
+    void initializeSubscribers();
     void initializeServices();
+    void alarmCallback(const std_msgs::Bool alarm_msg);
+    void distanceCallback(const std_msgs::Int8& alarm_index);
     bool estopServiceCallback(std_srvs::TriggerRequest& request, std_srvs::TriggerResponse& response);
     bool clearEstopServiceCallback(std_srvs::TriggerRequest& request, std_srvs::TriggerResponse& response);
     bool flushPathQueueCB(std_srvs::TriggerRequest& request, std_srvs::TriggerResponse& response);

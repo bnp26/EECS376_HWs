@@ -25,28 +25,28 @@ catkin_simple()
 # SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
 
 # Libraries: uncomment the following and edit arguments to create a new library
-cs_add_library(traj_builder src/traj_builder.cpp)   
+cs_add_library(traj_builder_lib src/traj_builder.cpp)   
 
 # Executables: uncomment the following and edit arguments to compile new nodes
 # may add more of these lines for more nodes from the same package
-cs_add_executable(traj_builder_example_main src/traj_builder_example_main.cpp)
+cs_add_executable(traj_builder_example_main_node src/traj_builder_example_main.cpp)
 
-cs_add_executable(mobot_pub_des_state src/pub_des_state_main.cpp src/pub_des_state.cpp)
-cs_add_executable(mobot_pub_des_state_startup src/pub_des_state_startup_main.cpp src/pub_des_state.cpp)
+cs_add_executable(mobot_pub_des_state_node src/pub_des_state_main.cpp src/pub_des_state.cpp)
+cs_add_executable(mobot_pub_des_state_startup_node src/pub_des_state_startup_main.cpp src/pub_des_state.cpp)
 
-cs_add_executable(open_loop_controller src/open_loop_controller.cpp)
+cs_add_executable(open_loop_controller_node src/open_loop_controller.cpp)
 
-cs_add_executable(pub_des_state_path_client src/pub_des_state_path_client.cpp)
-cs_add_executable(pub_des_state_path_client_3x3 src/pub_des_state_path_client_3mx3m_sqr.cpp)
+cs_add_executable(pub_des_state_path_client_node src/pub_des_state_path_client.cpp)
+cs_add_executable(pub_des_state_path_client_3x3_node src/pub_des_state_path_client_3mx3m_sqr.cpp)
 
 
-target_link_libraries(mobot_pub_des_state traj_builder)
-target_link_libraries(mobot_pub_des_state_startup traj_builder)
-target_link_libraries(open_loop_controller traj_builder)
-target_link_libraries(pub_des_state_path_client traj_builder)
-target_link_libraries(pub_des_state_path_client_3x3 traj_builder)
+target_link_libraries(mobot_pub_des_state_node traj_builder_lib)
+target_link_libraries(mobot_pub_des_state_startup_node traj_builder_lib)
+target_link_libraries(open_loop_controller_node traj_builder_lib)
+target_link_libraries(pub_des_state_path_client_node traj_builder_lib)
+target_link_libraries(pub_des_state_path_client_3x3_node traj_builder_lib)
 
-target_link_libraries(traj_builder_example_main traj_builder)
+target_link_libraries(traj_builder_example_main_node traj_builder_lib)
 
 #the following is required, if desire to link a node in this package with a library created in this same package
 # edit the arguments to reference the named node and named library within this package

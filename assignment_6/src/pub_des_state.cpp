@@ -20,6 +20,10 @@ DesStatePublisher::DesStatePublisher(ros::NodeHandle& nh) : nh_(nh) {
     trajBuilder_.set_path_move_tol_(path_move_tol_);
     initializePublishers();
     initializeServices();
+    initializeSubscribers();
+    //alarm listener variables
+    g_lidar_alarm_ = false;
+    g_lidar_alarm_index_ = 0;
     //define a halt state; zero speed and spin, and fill with viable coords
     halt_twist_.linear.x = 0.0;
     halt_twist_.linear.y = 0.0;
@@ -61,6 +65,11 @@ void DesStatePublisher::initializePublishers() {
     des_psi_publisher_ = nh_.advertise<std_msgs::Float64>("/desPsi", 1);
 }
 
+void DesStatePublisher::initializeSubscribers() {
+    alarm_subscriber_ = nh_.subscribe("lidar_alarm", 1, &DesStatePublisher::alarmCallback);
+    lidar_distance_ = nh_.subscribe("lidar_alarm_index", 1, &DesStatePublisher::distanceCallback);
+}
+
 bool DesStatePublisher::estopServiceCallback(std_srvs::TriggerRequest& request, std_srvs::TriggerResponse& response) {
     ROS_WARN("estop!!");
     e_stop_trigger_ = true;
@@ -71,6 +80,21 @@ bool DesStatePublisher::clearEstopServiceCallback(std_srvs::TriggerRequest& requ
     ROS_INFO("estop reset");
     e_stop_reset_ = true;
     return true;
+}
+
+void DesStatePublisher::alarmCallback(const std_msgs::Bool& alarm_msg) {
+    g_lidar_alarm_ = alarm_msg.data; //make the alarm status global, so main() can use it
+    if (g_lidar_alarm_) {
+        ROS_INFO("LIDAR alarm received!");
+    }
+}
+
+void DesStatePublisher::distanceCallback(const std_msgs::Int8& alarm_index)
+{
+    g_lidar_alarm_index_ = alarm_index.data;
+    if (g_lidar_alarm_) {
+        ROS_INFO("alarm came from %i", g_lidar_alarm_index_);
+    }
 }
 
 bool DesStatePublisher::flushPathQueueCB(std_srvs::TriggerRequest& request, std_srvs::TriggerResponse& response) {
@@ -115,7 +139,7 @@ void DesStatePublisher::set_init_pose(double x, double y, double psi) {
 
 void DesStatePublisher::pub_next_state() {
     // first test if an e-stop has been triggered
-    if (e_stop_trigger_) {
+    if (e_stop_trigger_ || g_lidar_alarm) {
         e_stop_trigger_ = false; //reset trigger
         //compute a halt trajectory
         trajBuilder_.build_braking_traj(current_pose_, des_state_vec_);
