@@ -47,8 +47,6 @@ private:
     bool e_stop_trigger_; //these are intended to enable e-stop via a service
     bool e_stop_reset_;
 
-    bool g_lidar_alarm_;	//for lidar alarm
-    int g_lidar_alarm_index_;
 
     int traj_pt_i_;
     int npts_traj_;
@@ -78,8 +76,6 @@ private:
     void initializePublishers();
     void initializeSubscribers();
     void initializeServices();
-    void alarmCallback(const std_msgs::Bool alarm_msg);
-    void distanceCallback(const std_msgs::Int8& alarm_index);
     bool estopServiceCallback(std_srvs::TriggerRequest& request, std_srvs::TriggerResponse& response);
     bool clearEstopServiceCallback(std_srvs::TriggerRequest& request, std_srvs::TriggerResponse& response);
     bool flushPathQueueCB(std_srvs::TriggerRequest& request, std_srvs::TriggerResponse& response);

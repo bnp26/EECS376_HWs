@@ -1,6 +1,26 @@
 #include "pub_des_state.h"
 //ExampleRosClass::ExampleRosClass(ros::NodeHandle* nodehandle):nh_(*nodehandle)
 
+//alarm listener variables
+bool g_lidar_alarm = false;
+int g_lidar_alarm_index = 0;
+
+//creating callbacks for lidar.
+void alarmCallback(const std_msgs::Bool& alarm_msg) {
+    g_lidar_alarm = alarm_msg.data; //make the alarm status global, so main() can use it
+    if (g_lidar_alarm) {
+        ROS_INFO("LIDAR alarm received!");
+    }
+}
+
+void distanceCallback(const std_msgs::Int8& alarm_index)
+{
+    g_lidar_alarm_index = alarm_index.data;
+    if (g_lidar_alarm) {
+        ROS_INFO("alarm came from %i", g_lidar_alarm_index);
+    }
+}
+
 DesStatePublisher::DesStatePublisher(ros::NodeHandle& nh) : nh_(nh) {
     //as_(nh, "pub_des_state_server", boost::bind(&DesStatePublisher::executeCB, this, _1),false) {
     //as_.start(); //start the server running
@@ -21,9 +41,6 @@ DesStatePublisher::DesStatePublisher(ros::NodeHandle& nh) : nh_(nh) {
     initializePublishers();
     initializeServices();
     initializeSubscribers();
-    //alarm listener variables
-    g_lidar_alarm_ = false;
-    g_lidar_alarm_index_ = 0;
     //define a halt state; zero speed and spin, and fill with viable coords
     halt_twist_.linear.x = 0.0;
     halt_twist_.linear.y = 0.0;
@@ -66,8 +83,8 @@ void DesStatePublisher::initializePublishers() {
 }
 
 void DesStatePublisher::initializeSubscribers() {
-    alarm_subscriber_ = nh_.subscribe("lidar_alarm", 1, &DesStatePublisher::alarmCallback);
-    lidar_distance_ = nh_.subscribe("lidar_alarm_index", 1, &DesStatePublisher::distanceCallback);
+    alarm_subscriber_ = nh_.subscribe("lidar_alarm", 1, alarmCallback);
+    lidar_distance_ = nh_.subscribe("lidar_alarm_index", 1, distanceCallback);
 }
 
 bool DesStatePublisher::estopServiceCallback(std_srvs::TriggerRequest& request, std_srvs::TriggerResponse& response) {
@@ -80,21 +97,6 @@ bool DesStatePublisher::clearEstopServiceCallback(std_srvs::TriggerRequest& requ
     ROS_INFO("estop reset");
     e_stop_reset_ = true;
     return true;
-}
-
-void DesStatePublisher::alarmCallback(const std_msgs::Bool& alarm_msg) {
-    g_lidar_alarm_ = alarm_msg.data; //make the alarm status global, so main() can use it
-    if (g_lidar_alarm_) {
-        ROS_INFO("LIDAR alarm received!");
-    }
-}
-
-void DesStatePublisher::distanceCallback(const std_msgs::Int8& alarm_index)
-{
-    g_lidar_alarm_index_ = alarm_index.data;
-    if (g_lidar_alarm_) {
-        ROS_INFO("alarm came from %i", g_lidar_alarm_index_);
-    }
 }
 
 bool DesStatePublisher::flushPathQueueCB(std_srvs::TriggerRequest& request, std_srvs::TriggerResponse& response) {
