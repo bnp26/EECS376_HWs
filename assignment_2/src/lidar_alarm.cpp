@@ -57,7 +57,7 @@ void laserCallback(const sensor_msgs::LaserScan& laser_scan) {
 		current_angle+=1;
    } 
    ROS_INFO("closest ping dist at index %i = %f", closest_ping_index, closest_ping_dist); 
-   if (closest_ping_dist < MIN_SAFE_DISTANCE) {
+   if (closest_ping_dist < MIN_SAFE_DISTANCE && closest_ping_dist > 0) {
        ROS_WARN("DANGER, WILL ROBINSON!!");
        laser_alarm_=true;
    }
@@ -87,7 +87,7 @@ int main(int argc, char **argv) {
     lidar_alarm_publisher_ = pub; // let's make this global, so callback can use it
     ros::Publisher pub2 = nh.advertise<std_msgs::Int8>("lidar_alarm_index", 1);  
     lidar_dist_publisher_ = pub2;
-    ros::Subscriber lidar_subscriber = nh.subscribe("robot0/laser_0", 1, laserCallback);
+    ros::Subscriber lidar_subscriber = nh.subscribe("/scan", 1, laserCallback);
     ros::spin(); //this is essentially a "while(1)" statement, except it
     // forces refreshing wakeups upon new data arrival
     // main program essentially hangs here, but it must stay alive to keep the callback function alive
