@@ -141,7 +141,7 @@ void DesStatePublisher::set_init_pose(double x, double y, double psi) {
 
 void DesStatePublisher::pub_next_state() {
     // first test if an e-stop has been triggered
-    if (e_stop_trigger_ || g_lidar_alarm) {
+    if (e_stop_trigger_) {
         e_stop_trigger_ = false; //reset trigger
         //compute a halt trajectory
         trajBuilder_.build_braking_traj(current_pose_, des_state_vec_);
@@ -160,7 +160,13 @@ void DesStatePublisher::pub_next_state() {
             motion_mode_ = DONE_W_SUBGOAL; //this will pick up where left off
         }
     }
-    
+    if(g_lidar_alarm) {
+       motion_mode_ = HALTING;
+        trajBuilder_.build_braking_traj(current_pose_, des_state_vec_);
+        motion_mode_ = HALTING;
+        traj_pt_i_ = 0;
+        npts_traj_ = des_state_vec_.size();
+    } 
     //state machine; results in publishing a new desired state
     switch (motion_mode_) {
         case E_STOPPED: //this state must be reset by a service

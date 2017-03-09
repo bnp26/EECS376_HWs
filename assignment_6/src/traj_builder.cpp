@@ -405,18 +405,84 @@ void TrajBuilder::build_triangular_spin_traj(geometry_msgs::PoseStamped start_po
 //compute trajectory corresponding to applying max prudent decel to halt
 void TrajBuilder::build_braking_traj(geometry_msgs::PoseStamped start_pose,
         std::vector<nav_msgs::Odometry> &vec_of_states) {
+
     nav_msgs::Odometry odom_state;
-
-    double omega_des = 0.0;
-
+    nav_msgs::Odometry des_state;
+    ROS_INFO("in build_braking_traj !!!");
+    
     //first see what is the current state of the robot. I'm assuming that the current position/orientation is start_pose
     odom_state.header = start_pose.header;
     odom_state.pose.pose = start_pose.pose;
     geometry_msgs::Twist current_twist = vec_of_states.back().twist.twist;
     odom_state.twist.twist = vec_of_states.back().twist.twist;
-    odom_state.twist.twist.linear.z = 0;
-    vec_of_states.push_back(odom_state);
-    //FINISH ME!
+
+    double x_start = start_pose.pose.position.x;
+    double y_start = start_pose.pose.position.y;
+    double psi_start = convertPlanarQuat2Psi(start_pose.pose.orientation);
+    double x_end, y_end;
+    double psi_end = psi_start + psi_start*0.1;
+    double x_des = x_start;
+    double y_des = y_start; 
+    double omega_des = odom_state.twist.twist.angular.z;
+
+    
+    if(psi_start > M_PI) {
+        x_end = x_start + 0.5; 
+    } else {
+        x_end = x_start - 0.5;
+    }
+    if(psi_start < M_PI/2 || psi_start > -M_PI/2) {
+        y_end = y_start + 0.5;
+    } else {
+        y_end = y_start - 0.5;
+    }
+    
+    double dx = x_end - x_start;
+    double dy = y_end - y_start;
+    
+    double trip_len = sqrt(dx * dx + dy * dy);
+    double t_ramp_linear = sqrt(trip_len / accel_max_);
+    int npts_ramp_linear = round(t_ramp_linear / dt_);
+    
+    double dpsi = min_dang(psi_end - psi_start);
+    double accel = sgn(dpsi) * alpha_max_; //watch out for sign: CW vs CCW rotation
+    double t_ramp_angular = sqrt(fabs(dpsi) / alpha_max_);
+    int npts_ramp_angular = round(t_ramp_angular / dt_);
+
+    double psi_des = psi_start; //start from here
+    
+    for (int i = 0; i < npts_ramp_angular; i++) {
+        omega_des -= accel*dt_; //Euler one-step integration
+        des_state.twist.twist.angular.z = omega_des;
+        psi_des += omega_des*dt_; //Euler one-step integration
+        des_state.pose.pose.orientation = convertPlanarPsi2Quaternion(psi_des);
+        vec_of_states.push_back(des_state);
+    }
+    double speed_des = odom_state.twist.twist.linear.x; 
+    for (int i = 0; i < npts_ramp_linear; i++) {
+        speed_des -= accel_max_*dt_; //Euler one-step integration
+        des_state.twist.twist.linear.x = speed_des;
+        x_des += speed_des * dt_ * cos(psi_des); //Euler one-step integration
+        y_des += speed_des * dt_ * sin(psi_des); //Euler one-step integration        
+        des_state.pose.pose.position.x = x_des;
+        des_state.pose.pose.position.y = y_des;
+        vec_of_states.push_back(des_state);
+    }
+
+    des_state.twist.twist = halt_twist_; // insist on full stop
+    vec_of_states.push_back(des_state);
+   /* 
+    while(des_state.twist.twist.angular.z > 0.001 &&
+           des_state.twist.twist.linear.x > 0.001 && 
+           des_state.twist.twist.linear.y > 0.001) {
+        
+        omega_des -= accel*dt_; //Euler one-step integration
+        des_state.twist.twist.angular.z = omega_des;
+        psi_des += omega_des*dt_; //Euler one-step integration
+        des_state.pose.pose.orientation = convertPlanarPsi2Quaternion(psi_des);
+        psi_des += omega_des*dt_;   
+    }*/
+            //FINISH ME!
 }
 
 //main fnc of this library: constructs a spin-in-place reorientation to
