@@ -25,7 +25,10 @@
 #include <geometry_msgs/PointStamped.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <nav_msgs/Odometry.h>
- #include <tf/transform_listener.h>
+#include <tf/transform_listener.h>
+#include <tf/LinearMath/Vector3.h>
+#include <tf/LinearMath/QuadWord.h>
+#include <tf/transform_broadcaster.h>
 
 //Eigen is useful for linear algebra
 //#include <Eigen/Eigen>

@@ -8,7 +8,8 @@
 
 // this header incorporates all the necessary #include files and defines the class "SteeringController"
 #include "steering_algorithm.h"
-
+#include <tf/transform_listener.h>
+#include <tf/transform_exception.h>
 
 SteeringController::SteeringController(ros::NodeHandle* nodehandle):nh_(*nodehandle)
 { // constructor
@@ -26,7 +27,7 @@ SteeringController::SteeringController(ros::NodeHandle* nodehandle):nh_(*nodehan
     }
     ROS_INFO("constructor: got an odom message");    
     
-    /*
+    
     tfListener_ = new tf::TransformListener; 
  
     bool tferr=true;
@@ -47,7 +48,6 @@ SteeringController::SteeringController(ros::NodeHandle* nodehandle):nh_(*nodehan
     }
     ROS_INFO("tf is good");
     // from now on, tfListener will keep track of transforms from map frame to target frame
-    */
     
     //initialize desired state, in case this is not yet being published adequately
     des_state_ = current_odom_;  // use the current odom state
